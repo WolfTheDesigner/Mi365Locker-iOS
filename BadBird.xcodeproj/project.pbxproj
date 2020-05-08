@@ -108,14 +108,14 @@
 				TargetAttributes = {
 					D5B24DD71DEE393B00D33B5A = {
 						CreatedOnToolsVersion = 8.0;
-						DevelopmentTeam = Z6X45U4CFJ;
+						DevelopmentTeam = R87JLM4BQL;
 						ProvisioningStyle = Automatic;
 					};
 				};
 			};
 			buildConfigurationList = D5B24DD31DEE393B00D33B5A /* Build configuration list for PBXProject "BadBird" */;
 			compatibilityVersion = "Xcode 3.2";
-			developmentRegion = English;
+			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
@@ -259,13 +259,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
-				DEVELOPMENT_TEAM = Z6X45U4CFJ;
+				DEVELOPMENT_TEAM = R87JLM4BQL;
 				INFOPLIST_FILE = "$(SRCROOT)/../Mi365Locker-iOS/BadBird/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 10.3;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = Zimperium.BadBird;
+				PRODUCT_BUNDLE_IDENTIFIER = Wolf.BadBird;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 3.0;
+				SWIFT_VERSION = 4.0;
 			};
 			name = Debug;
 		};
@@ -274,13 +274,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
-				DEVELOPMENT_TEAM = Z6X45U4CFJ;
+				DEVELOPMENT_TEAM = R87JLM4BQL;
 				INFOPLIST_FILE = "$(SRCROOT)/../Mi365Locker-iOS/BadBird/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 10.3;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = Zimperium.BadBird;
+				PRODUCT_BUNDLE_IDENTIFIER = Wolf.BadBird;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 3.0;
+				SWIFT_VERSION = 4.0;
 			};
 			name = Release;
 		};
