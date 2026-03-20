@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A1B2C3D4E5F6A7B8C9D0E1F4 /* BadBirdTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E1F2 /* BadBirdTests.swift */; };
 		C3B98B6F22130F0000124A45 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3B98B6322130EFF00124A45 /* AppDelegate.swift */; };
 		C3B98B7022130F0000124A45 /* PeripheralTableViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3B98B6422130EFF00124A45 /* PeripheralTableViewCell.swift */; };
 		C3B98B7122130F0000124A45 /* UartModuleViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3B98B6522130EFF00124A45 /* UartModuleViewController.swift */; };
@@ -18,7 +19,19 @@
 		C3B98B8222130F0000124A45 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C3B98B6922130EFF00124A45 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		A1B2C3D4E5F6A7B8C9D0E1FD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D5B24DD01DEE393B00D33B5A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D5B24DD71DEE393B00D33B5A;
+			remoteInfo = BadBird;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		A1B2C3D4E5F6A7B8C9D0E1F2 /* BadBirdTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BadBirdTests.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6A7B8C9D0E1F3 /* BadBirdTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BadBirdTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C3B98B6322130EFF00124A45 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		C3B98B6422130EFF00124A45 /* PeripheralTableViewCell.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PeripheralTableViewCell.swift; sourceTree = "<group>"; };
 		C3B98B6522130EFF00124A45 /* UartModuleViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UartModuleViewController.swift; sourceTree = "<group>"; };
@@ -32,6 +45,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		A1B2C3D4E5F6A7B8C9D0E1F7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D5B24DD51DEE393B00D33B5A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -42,10 +62,19 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		A1B2C3D4E5F6A7B8C9D0E1F5 /* BadBirdTests */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D4E5F6A7B8C9D0E1F2 /* BadBirdTests.swift */,
+			);
+			path = BadBirdTests;
+			sourceTree = "<group>";
+		};
 		D5B24DCF1DEE393B00D33B5A = {
 			isa = PBXGroup;
 			children = (
 				D5B24DDA1DEE393B00D33B5A /* BadBird */,
+				A1B2C3D4E5F6A7B8C9D0E1F5 /* BadBirdTests */,
 				D5B24DD91DEE393B00D33B5A /* Products */,
 			);
 			sourceTree = "<group>";
@@ -54,6 +83,7 @@
 			isa = PBXGroup;
 			children = (
 				D5B24DD81DEE393B00D33B5A /* BadBird.app */,
+				A1B2C3D4E5F6A7B8C9D0E1F3 /* BadBirdTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -77,6 +107,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		A1B2C3D4E5F6A7B8C9D0E1F8 /* BadBirdTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1B2C3D4E5F6A7B8C9D0E1FB /* Build configuration list for PBXNativeTarget "BadBirdTests" */;
+			buildPhases = (
+				A1B2C3D4E5F6A7B8C9D0E1F6 /* Sources */,
+				A1B2C3D4E5F6A7B8C9D0E1F7 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A1B2C3D4E5F6A7B8C9D0E1FC /* PBXTargetDependency */,
+			);
+			name = BadBirdTests;
+			productName = BadBirdTests;
+			productReference = A1B2C3D4E5F6A7B8C9D0E1F3 /* BadBirdTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		D5B24DD71DEE393B00D33B5A /* BadBird */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = D5B24DEA1DEE393B00D33B5A /* Build configuration list for PBXNativeTarget "BadBird" */;
@@ -105,6 +152,10 @@
 				LastUpgradeCheck = 2630;
 				ORGANIZATIONNAME = "Vanguard Logic LLC";
 				TargetAttributes = {
+					A1B2C3D4E5F6A7B8C9D0E1F8 = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = D5B24DD71DEE393B00D33B5A;
+					};
 					D5B24DD71DEE393B00D33B5A = {
 						CreatedOnToolsVersion = 15.0;
 						ProvisioningStyle = Automatic;
@@ -125,6 +176,7 @@
 			projectRoot = "";
 			targets = (
 				D5B24DD71DEE393B00D33B5A /* BadBird */,
+				A1B2C3D4E5F6A7B8C9D0E1F8 /* BadBirdTests */,
 			);
 		};
 /* End PBXProject section */
@@ -143,6 +195,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		A1B2C3D4E5F6A7B8C9D0E1F6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1B2C3D4E5F6A7B8C9D0E1F4 /* BadBirdTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D5B24DD41DEE393B00D33B5A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -158,7 +218,61 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		A1B2C3D4E5F6A7B8C9D0E1FC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D5B24DD71DEE393B00D33B5A /* BadBird */;
+			targetProxy = A1B2C3D4E5F6A7B8C9D0E1FD /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		A1B2C3D4E5F6A7B8C9D0E1F9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = R87JLM4BQL;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Zimperium.BadBirdTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BadBird.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BadBird";
+			};
+			name = Debug;
+		};
+		A1B2C3D4E5F6A7B8C9D0E1FA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = R87JLM4BQL;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Zimperium.BadBirdTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BadBird.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BadBird";
+			};
+			name = Release;
+		};
 		D5B24DE81DEE393B00D33B5A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -314,6 +428,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		A1B2C3D4E5F6A7B8C9D0E1FB /* Build configuration list for PBXNativeTarget "BadBirdTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1B2C3D4E5F6A7B8C9D0E1F9 /* Debug */,
+				A1B2C3D4E5F6A7B8C9D0E1FA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		D5B24DD31DEE393B00D33B5A /* Build configuration list for PBXProject "BadBird" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
