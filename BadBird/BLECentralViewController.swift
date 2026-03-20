@@ -71,7 +71,7 @@ class BLECentralViewController: UIViewController, @preconcurrency CBCentralManag
         print(isLocked ? "Now Locking..." : "Now Unlocking...")
 
         scanTimer?.invalidate()
-        centralManager?.scanForPeripherals(withServices: [BLEService_UUID], options: [CBCentralManagerScanOptionAllowDuplicatesKey: false])
+        centralManager?.scanForPeripherals(withServices: [BLEUUIDs.service], options: [CBCentralManagerScanOptionAllowDuplicatesKey: false])
         scanTimer = Timer.scheduledTimer(timeInterval: 17, target: self, selector: #selector(cancelScan), userInfo: nil, repeats: false)
     }
 
@@ -124,7 +124,7 @@ class BLECentralViewController: UIViewController, @preconcurrency CBCentralManag
         print("Scan Stopped")
 
         peripheral.delegate = self
-        peripheral.discoverServices([BLEService_UUID])
+        peripheral.discoverServices([BLEUUIDs.service])
 
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
         guard let uartViewController = storyboard.instantiateViewController(withIdentifier: "UartModuleViewController") as? UartModuleViewController else {
@@ -156,7 +156,7 @@ class BLECentralViewController: UIViewController, @preconcurrency CBCentralManag
         guard let services = peripheral.services else { return }
 
         for service in services {
-            peripheral.discoverCharacteristics([BLE_Characteristic_uuid_Tx, BLE_Characteristic_uuid_Rx], for: service)
+            peripheral.discoverCharacteristics([BLEUUIDs.tx, BLEUUIDs.rx], for: service)
         }
         print("Discovered Services: \(services)")
     }
@@ -172,13 +172,13 @@ class BLECentralViewController: UIViewController, @preconcurrency CBCentralManag
         print("Found \(characteristics.count) characteristics!")
 
         for characteristic in characteristics {
-            if characteristic.uuid.isEqual(BLE_Characteristic_uuid_Rx) {
+            if characteristic.uuid.isEqual(BLEUUIDs.rx) {
                 rxCharacteristic = characteristic
                 peripheral.setNotifyValue(true, for: characteristic)
                 peripheral.readValue(for: characteristic)
                 print("Rx Characteristic: \(characteristic.uuid)")
             }
-            if characteristic.uuid.isEqual(BLE_Characteristic_uuid_Tx) {
+            if characteristic.uuid.isEqual(BLEUUIDs.tx) {
                 txCharacteristic = characteristic
                 print("Tx Characteristic: \(characteristic.uuid)")
             }
