@@ -29,6 +29,10 @@ class UartModuleViewController: UIViewController, UITextViewDelegate, UITextFiel
     override func viewDidLoad() {
         super.viewDidLoad()
 
+        guard peripheral != nil else {
+            fatalError("UartModuleViewController requires a peripheral to be set before presentation")
+        }
+
         navigationItem.backBarButtonItem = UIBarButtonItem(title: "Back", style: .plain, target: nil, action: nil)
         baseTextView.delegate = self
         inputTextField.delegate = self
