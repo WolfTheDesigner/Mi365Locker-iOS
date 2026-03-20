@@ -61,20 +61,22 @@ class UartModuleViewController: UIViewController, UITextViewDelegate, UITextFiel
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            guard let self else { return }
+            MainActor.assumeIsolated {
+                guard let self else { return }
 
-            let appendString = "\n"
-            let myFont = UIFont(name: "Helvetica Neue", size: 15.0) ?? UIFont.systemFont(ofSize: 15.0)
-            let attributes: [NSAttributedString.Key: Any] = [
-                .font: myFont,
-                .foregroundColor: UIColor.red
-            ]
-            let attribString = NSAttributedString(
-                string: "[Incoming]: " + characteristicASCIIValue + appendString,
-                attributes: attributes
-            )
-            self.consoleAsciiText.append(attribString)
-            self.baseTextView.attributedText = self.consoleAsciiText
+                let appendString = "\n"
+                let myFont = UIFont(name: "Helvetica Neue", size: 15.0) ?? UIFont.systemFont(ofSize: 15.0)
+                let attributes: [NSAttributedString.Key: Any] = [
+                    .font: myFont,
+                    .foregroundColor: UIColor.red
+                ]
+                let attribString = NSAttributedString(
+                    string: "[Incoming]: " + characteristicASCIIValue + appendString,
+                    attributes: attributes
+                )
+                self.consoleAsciiText.append(attribString)
+                self.baseTextView.attributedText = self.consoleAsciiText
+            }
         }
     }
 
