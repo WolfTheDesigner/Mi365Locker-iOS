@@ -10,389 +10,272 @@ import Foundation
 import UIKit
 import CoreBluetooth
 
+// Shared BLE state accessible from @MainActor context
+@MainActor var txCharacteristic: CBCharacteristic?
+@MainActor var rxCharacteristic: CBCharacteristic?
+@MainActor var blePeripheral: CBPeripheral?
+@MainActor var characteristicASCIIValue = ""
+@MainActor var isLocked = true
 
-var txCharacteristic : CBCharacteristic?
-var rxCharacteristic : CBCharacteristic?
-var blePeripheral : CBPeripheral?
-var characteristicASCIIValue = NSString()
-var lock : Bool = true
+class BLECentralViewController: UIViewController, @preconcurrency CBCentralManagerDelegate, @preconcurrency CBPeripheralDelegate, UITableViewDelegate, UITableViewDataSource {
 
-
-class BLECentralViewController : UIViewController, CBCentralManagerDelegate, CBPeripheralDelegate, UITableViewDelegate, UITableViewDataSource{
-    
-    //Data
-    
-    var centralManager : CBCentralManager!
-    var RSSIs = [NSNumber]()
-    var data = NSMutableData()
-    var writeData: String = ""
+    // MARK: - Data
+    var centralManager: CBCentralManager!
+    var rssiValues: [NSNumber] = []
     var peripherals: [CBPeripheral] = []
-    var characteristicValue = [CBUUID: NSData]()
-    var timer = Timer()
-    var characteristics = [String : CBCharacteristic]()
-    
-    //UI
+    var scanTimer: Timer?
+
+    // MARK: - UI
     @IBOutlet weak var baseTableView: UITableView!
     @IBOutlet weak var refreshButton: UIBarButtonItem!
-    
+
     @IBAction func refreshAction(_ sender: AnyObject) {
         disconnectFromDevice()
-        self.peripherals = []
-        self.RSSIs = []
-        self.baseTableView.reloadData()
+        peripherals = []
+        rssiValues = []
+        baseTableView.reloadData()
         startScan()
     }
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        self.baseTableView.delegate = self
-        self.baseTableView.dataSource = self
-        self.baseTableView.reloadData()
-        
-        /*Our key player in this app will be our CBCentralManager. CBCentralManager objects are used to manage discovered or connected remote peripheral devices (represented by CBPeripheral objects), including scanning for, discovering, and connecting to advertising peripherals.
-         */
+        baseTableView.delegate = self
+        baseTableView.dataSource = self
+        baseTableView.reloadData()
+
         centralManager = CBCentralManager(delegate: self, queue: nil)
         let backButton = UIBarButtonItem(title: "Disconnect", style: .plain, target: nil, action: nil)
         navigationItem.backBarButtonItem = backButton
     }
-    
+
     override func viewDidAppear(_ animated: Bool) {
         disconnectFromDevice()
         super.viewDidAppear(animated)
         refreshScanView()
         print("View Cleared")
     }
-    
+
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         print("Stop Scanning")
         centralManager?.stopScan()
+        scanTimer?.invalidate()
+        scanTimer = nil
     }
-    
-    /*Okay, now that we have our CBCentalManager up and running, it's time to start searching for devices. You can do this by calling the "scanForPeripherals" method.*/
-    
+
+    // MARK: - Scanning
+
     func startScan() {
         peripherals = []
-        lock = !lock
-        if (lock)
-        {print("Now Locking...")}
-        else
-        {print("Now unLocking...")}
-        self.timer.invalidate()
-        centralManager?.scanForPeripherals(withServices: [BLEService_UUID] , options: [CBCentralManagerScanOptionAllowDuplicatesKey:false])
-        Timer.scheduledTimer(timeInterval: 17, target: self, selector: #selector(self.cancelScan), userInfo: nil, repeats: false)
+        isLocked = !isLocked
+        print(isLocked ? "Now Locking..." : "Now Unlocking...")
+
+        scanTimer?.invalidate()
+        centralManager?.scanForPeripherals(withServices: [BLEService_UUID], options: [CBCentralManagerScanOptionAllowDuplicatesKey: false])
+        scanTimer = Timer.scheduledTimer(timeInterval: 17, target: self, selector: #selector(cancelScan), userInfo: nil, repeats: false)
     }
-    
-    /*We also need to stop scanning at some point so we'll also create a function that calls "stopScan"*/
-    func cancelScan() {
-        self.centralManager?.stopScan()
+
+    @objc func cancelScan() {
+        centralManager?.stopScan()
         print("Scan Stopped")
         print("Number of Peripherals Found: \(peripherals.count)")
     }
-    
+
     func refreshScanView() {
-        
         baseTableView.reloadData()
     }
-    
-    //-Terminate all Peripheral Connection
-    /*
-     Call this when things either go wrong, or you're done with the connection.
-     This cancels any subscriptions if there are any, or straight disconnects if not.
-     (didUpdateNotificationStateForCharacteristic will cancel the connection if a subscription is involved)
-     */
-    func disconnectFromDevice () {
-        if blePeripheral != nil {
-            // We have a connection to the device but we are not subscribed to the Transfer Characteristic for some reason.
-            // Therefore, we will just disconnect from the peripheral
-            centralManager?.cancelPeripheralConnection(blePeripheral!)
-        }
+
+    // MARK: - Connection Management
+
+    func disconnectFromDevice() {
+        guard let peripheral = blePeripheral else { return }
+        centralManager?.cancelPeripheralConnection(peripheral)
     }
-    
-    
+
     func restoreCentralManager() {
-        //Restores Central Manager delegate if something went wrong
         centralManager?.delegate = self
     }
-    
-    /*
-     Called when the central manager discovers a peripheral while scanning. Also, once peripheral is connected, cancel scanning.
-     */
-    func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral,advertisementData: [String : Any], rssi RSSI: NSNumber) {
-        
-        if (self.peripherals.contains(peripheral))
-            {return}
-        
-        blePeripheral = peripheral
+
+    func connectToDevice() {
+        guard let peripheral = blePeripheral else {
+            print("No peripheral to connect to")
+            return
+        }
+        centralManager?.connect(peripheral, options: nil)
+    }
+
+    // MARK: - CBCentralManagerDelegate
+
+    func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String: Any], rssi RSSI: NSNumber) {
+        if peripherals.contains(peripheral) { return }
+
         self.peripherals.append(peripheral)
-        self.RSSIs.append(RSSI)
+        self.rssiValues.append(RSSI)
         peripheral.delegate = self
         self.baseTableView.reloadData()
-        if blePeripheral == nil {
-            print("Found new pheripheral devices with services")
-            print("Peripheral name: \(String(describing: peripheral.name))")
-            print("**********************************")
-            print ("Advertisement Data : \(advertisementData)")
-        }
-//        connectToDevice()
-//        let asd = UartModuleViewController()
-//
-//        asd.toggleLock(blePeripheral: peripheral);
-//
-//        disconnectFromDevice()
-//
-
-        
-//        blePeripheral = peripherals[indexPath.row]
-        //connectToDevice()
-
-        // HERE
     }
-    
-    //Peripheral Connections: Connecting, Connected, Disconnected
-    
-    //-Connection
-    func connectToDevice () {
-        centralManager?.connect(blePeripheral!, options: nil)
-    }
-    
-    /*
-     Invoked when a connection is successfully created with a peripheral.
-     This method is invoked when a call to connect(_:options:) is successful. You typically implement this method to set the peripheral’s delegate and to discover its services.
-     */
-    //-Connected
+
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         print("*****************************")
         print("Connection complete")
-        print("Peripheral info: \(String(describing: blePeripheral))")
-        
-        //Stop Scan- We don't need to scan once we've connected to a peripheral. We got what we came for.
+        print("Peripheral info: \(String(describing: peripheral))")
+
         centralManager?.stopScan()
         print("Scan Stopped")
-        
-        //Erase data that we might have
-        data.length = 0
-        
-        //Discovery callback
+
         peripheral.delegate = self
-        //Only look for services that matches transmit uuid
         peripheral.discoverServices([BLEService_UUID])
-        
-        
-        //Once connected, move to new view controller to manager incoming and outgoing data
+
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
-        
-        let uartViewController = storyboard.instantiateViewController(withIdentifier: "UartModuleViewController") as! UartModuleViewController
-        
+        guard let uartViewController = storyboard.instantiateViewController(withIdentifier: "UartModuleViewController") as? UartModuleViewController else {
+            print("Failed to instantiate UartModuleViewController")
+            return
+        }
         uartViewController.peripheral = peripheral
-        
         navigationController?.pushViewController(uartViewController, animated: true)
     }
-    
-    /*
-     Invoked when the central manager fails to create a connection with a peripheral.
-     */
-    
-    func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
-        if error != nil {
-            print("Failed to connect to peripheral")
-            return
+
+    func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: (any Error)?) {
+        if let error {
+            print("Failed to connect to peripheral: \(error.localizedDescription)")
         }
     }
-    
-    func disconnectAllConnection() {
-        centralManager.cancelPeripheralConnection(blePeripheral!)
+
+    func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: (any Error)?) {
+        print("Disconnected")
     }
-    
-    /*
-     Invoked when you discover the peripheral’s available services.
-     This method is invoked when your app calls the discoverServices(_:) method. If the services of the peripheral are successfully discovered, you can access them through the peripheral’s services property. If successful, the error parameter is nil. If unsuccessful, the error parameter returns the cause of the failure.
-     */
-    func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
-        print("*******************************************************")
-        
-        if ((error) != nil) {
-            print("Error discovering services: \(error!.localizedDescription)")
+
+    // MARK: - CBPeripheralDelegate
+
+    func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: (any Error)?) {
+        if let error {
+            print("Error discovering services: \(error.localizedDescription)")
             return
         }
-        
-        guard let services = peripheral.services else {
-            return
-        }
-        //We need to discover the all characteristic
+
+        guard let services = peripheral.services else { return }
+
         for service in services {
-            
-            peripheral.discoverCharacteristics(nil, for: service)
-            // bleService = service
+            peripheral.discoverCharacteristics([BLE_Characteristic_uuid_Tx, BLE_Characteristic_uuid_Rx], for: service)
         }
         print("Discovered Services: \(services)")
     }
-    
-    /*
-     Invoked when you discover the characteristics of a specified service.
-     This method is invoked when your app calls the discoverCharacteristics(_:for:) method. If the characteristics of the specified service are successfully discovered, you can access them through the service's characteristics property. If successful, the error parameter is nil. If unsuccessful, the error parameter returns the cause of the failure.
-     */
-    
-    func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
-        
-        print("*******************************************************")
-        
-        if ((error) != nil) {
-            print("Error discovering services: \(error!.localizedDescription)")
+
+    func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: (any Error)?) {
+        if let error {
+            print("Error discovering characteristics: \(error.localizedDescription)")
             return
         }
-        
-        guard let characteristics = service.characteristics else {
-            return
-        }
-        
+
+        guard let characteristics = service.characteristics else { return }
+
         print("Found \(characteristics.count) characteristics!")
-        
+
         for characteristic in characteristics {
-            //looks for the right characteristic
-            
-            if characteristic.uuid.isEqual(BLE_Characteristic_uuid_Rx)  {
+            if characteristic.uuid.isEqual(BLE_Characteristic_uuid_Rx) {
                 rxCharacteristic = characteristic
-                
-                //Once found, subscribe to the this particular characteristic...
-                peripheral.setNotifyValue(true, for: rxCharacteristic!)
-                // We can return after calling CBPeripheral.setNotifyValue because CBPeripheralDelegate's
-                // didUpdateNotificationStateForCharacteristic method will be called automatically
+                peripheral.setNotifyValue(true, for: characteristic)
                 peripheral.readValue(for: characteristic)
                 print("Rx Characteristic: \(characteristic.uuid)")
             }
-            if characteristic.uuid.isEqual(BLE_Characteristic_uuid_Tx){
+            if characteristic.uuid.isEqual(BLE_Characteristic_uuid_Tx) {
                 txCharacteristic = characteristic
                 print("Tx Characteristic: \(characteristic.uuid)")
             }
             peripheral.discoverDescriptors(for: characteristic)
         }
     }
-    
-    // Getting Values From Characteristic
-    
-    /*After you've found a characteristic of a service that you are interested in, you can read the characteristic's value by calling the peripheral "readValueForCharacteristic" method within the "didDiscoverCharacteristicsFor service" delegate.
-     */
-    func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
-        
+
+    func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: (any Error)?) {
         if characteristic == rxCharacteristic {
-            if let ASCIIstring = NSString(data: characteristic.value!, encoding: String.Encoding.utf8.rawValue) {
-                characteristicASCIIValue = ASCIIstring
-                print("Value Recieved: \((characteristicASCIIValue as String))")
-                NotificationCenter.default.post(name:NSNotification.Name(rawValue: "Notify"), object: nil)
-                
-            }
+            guard let value = characteristic.value,
+                  let asciiString = String(data: value, encoding: .utf8) else { return }
+            characteristicASCIIValue = asciiString
+            print("Value Received: \(asciiString)")
+            NotificationCenter.default.post(name: NSNotification.Name(rawValue: "Notify"), object: nil)
         }
     }
-    
-    
-    func peripheral(_ peripheral: CBPeripheral, didDiscoverDescriptorsFor characteristic: CBCharacteristic, error: Error?) {
-        print("*******************************************************")
-        
-        if error != nil {
-            print("\(error.debugDescription)")
+
+    func peripheral(_ peripheral: CBPeripheral, didDiscoverDescriptorsFor characteristic: CBCharacteristic, error: (any Error)?) {
+        if let error {
+            print("\(error.localizedDescription)")
             return
         }
-        if ((characteristic.descriptors) != nil) {
-            
-            for x in characteristic.descriptors!{
-                let descript = x as CBDescriptor!
-                print("function name: DidDiscoverDescriptorForChar \(String(describing: descript?.description))")
-                print("Rx Value \(String(describing: rxCharacteristic?.value))")
-                print("Tx Value \(String(describing: txCharacteristic?.value))")
-            }
+        guard let descriptors = characteristic.descriptors else { return }
+        for descriptor in descriptors {
+            print("Descriptor: \(String(describing: descriptor.description))")
+            print("Rx Value \(String(describing: rxCharacteristic?.value))")
+            print("Tx Value \(String(describing: txCharacteristic?.value))")
         }
     }
-    
-    
-    func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
-        print("*******************************************************")
-        
-        if (error != nil) {
-            print("Error changing notification state:\(String(describing: error?.localizedDescription))")
-            
+
+    func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: (any Error)?) {
+        if let error {
+            print("Error changing notification state: \(error.localizedDescription)")
         } else {
             print("Characteristic's value subscribed")
         }
-        
-        if (characteristic.isNotifying) {
-            print ("Subscribed. Notification has begun for: \(characteristic.uuid)")
+
+        if characteristic.isNotifying {
+            print("Subscribed. Notification has begun for: \(characteristic.uuid)")
         }
     }
-    
-    
-    
-    func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
-        print("Disconnected")
-    }
-    
-    
-    func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
+
+    func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: (any Error)?) {
         guard error == nil else {
-            print("Error discovering services: error")
+            print("Error writing value: \(error!.localizedDescription)")
             return
         }
         print("Message sent")
     }
-    
-    func peripheral(_ peripheral: CBPeripheral, didWriteValueFor descriptor: CBDescriptor, error: Error?) {
+
+    func peripheral(_ peripheral: CBPeripheral, didWriteValueFor descriptor: CBDescriptor, error: (any Error)?) {
         guard error == nil else {
-            print("Error discovering services: error")
+            print("Error writing descriptor: \(error!.localizedDescription)")
             return
         }
         print("Succeeded!")
     }
-    
-    //Table View Functions
+
+    // MARK: - UITableViewDataSource
+
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return self.peripherals.count
+        return peripherals.count
     }
-    
+
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        //Connect to device where the peripheral is connected
-        let cell = tableView.dequeueReusableCell(withIdentifier: "BlueCell") as! PeripheralTableViewCell
-        let peripheral = self.peripherals[indexPath.row]
-        let RSSI = self.RSSIs[indexPath.row]
-        
-        
-        if peripheral.name == nil {
-            cell.peripheralLabel.text = "nil"
-        } else {
-            cell.peripheralLabel.text = peripheral.name
+        guard let cell = tableView.dequeueReusableCell(withIdentifier: "BlueCell") as? PeripheralTableViewCell else {
+            return UITableViewCell()
         }
-        cell.rssiLabel.text = "RSSI: \(RSSI)"
-        
+        let peripheral = peripherals[indexPath.row]
+        let rssi = rssiValues[indexPath.row]
+
+        cell.peripheralLabel.text = peripheral.name ?? "Unknown"
+        cell.rssiLabel.text = "RSSI: \(rssi)"
+
         return cell
     }
-    
+
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         blePeripheral = peripherals[indexPath.row]
         connectToDevice()
-        // lock device here //
-        // disconnect from device here //
     }
-    
-    /*
-     Invoked when the central manager’s state is updated.
-     This is where we kick off the scan if Bluetooth is turned on.
-     */
+
+    // MARK: - CBManagerState
+
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
-        if central.state == CBManagerState.poweredOn {
-            // We will just handle it the easy way here: if Bluetooth is on, proceed...start scan!
+        if central.state == .poweredOn {
             print("Bluetooth Enabled")
             startScan()
-            
         } else {
-            //If Bluetooth is off, display a UI alert message saying "Bluetooth is not enable" and "Make sure that your bluetooth is turned on"
             print("Bluetooth Disabled- Make sure your Bluetooth is turned on")
-            
-            let alertVC = UIAlertController(title: "Bluetooth is not enabled", message: "Make sure that your bluetooth is turned on", preferredStyle: UIAlertControllerStyle.alert)
-            let action = UIAlertAction(title: "ok", style: UIAlertActionStyle.default, handler: { (action: UIAlertAction) -> Void in
+
+            let alertVC = UIAlertController(title: "Bluetooth is not enabled", message: "Make sure that your bluetooth is turned on", preferredStyle: .alert)
+            let action = UIAlertAction(title: "OK", style: .default) { _ in
                 self.dismiss(animated: true, completion: nil)
-            })
+            }
             alertVC.addAction(action)
-            self.present(alertVC, animated: true, completion: nil)
+            present(alertVC, animated: true, completion: nil)
         }
     }
 }
-
