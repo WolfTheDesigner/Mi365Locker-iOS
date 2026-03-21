@@ -64,6 +64,10 @@ class UartModuleViewController: UIViewController, UITextViewDelegate, UITextFiel
     }
 
     func updateIncomingData() {
+        if let existing = notificationObserver {
+            NotificationCenter.default.removeObserver(existing)
+            notificationObserver = nil
+        }
         notificationObserver = NotificationCenter.default.addObserver(
             forName: NSNotification.Name(rawValue: "Notify"),
             object: nil,
@@ -161,11 +165,9 @@ class UartModuleViewController: UIViewController, UITextViewDelegate, UITextFiel
         if locking {
             Self.logger.info("Switch: Lock ON")
             sendCommand(lock: true)
-            writeCharacteristic(val: 1)
         } else {
             Self.logger.info("Switch: Lock OFF")
             sendCommand(lock: false)
-            writeCharacteristic(val: 0)
         }
     }
 

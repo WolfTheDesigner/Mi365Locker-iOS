@@ -75,6 +75,7 @@ class BLECentralViewController: UIViewController, @preconcurrency CBCentralManag
 
     func startScan() {
         peripherals = []
+        rssiValues = []
 
         scanTimer?.invalidate()
         centralManager?.scanForPeripherals(withServices: [BLEUUIDs.service], options: [CBCentralManagerScanOptionAllowDuplicatesKey: false])
