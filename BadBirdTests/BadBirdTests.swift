@@ -46,7 +46,7 @@ struct Mi365CommandTests {
     }
 }
 
-@Suite("BLEConnectionState")
+@Suite("BLEConnectionState", .serialized)
 struct BLEConnectionStateTests {
     @Test("Shared instance is singleton")
     @MainActor

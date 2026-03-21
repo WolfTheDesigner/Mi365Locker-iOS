@@ -46,12 +46,12 @@ class UartModuleViewController: UIViewController, UITextViewDelegate, UITextFiel
         inputTextField.layer.borderColor = UIColor.blue.cgColor
         inputTextField.layer.cornerRadius = 3.0
 
-        updateIncomingData()
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         baseTextView.text = ""
+        updateIncomingData()
     }
 
     override func viewDidDisappear(_ animated: Bool) {
@@ -68,22 +68,20 @@ class UartModuleViewController: UIViewController, UITextViewDelegate, UITextFiel
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in
-                guard let self else { return }
+            guard let self else { return }
 
-                let appendString = "\n"
-                let myFont = UIFont(name: "Helvetica Neue", size: 15.0) ?? UIFont.systemFont(ofSize: 15.0)
-                let attributes: [NSAttributedString.Key: Any] = [
-                    .font: myFont,
-                    .foregroundColor: UIColor.red
-                ]
-                let attribString = NSAttributedString(
-                    string: "[Incoming]: " + BLEConnectionState.shared.lastReceivedValue + appendString,
-                    attributes: attributes
-                )
-                self.consoleAsciiText.append(attribString)
-                self.baseTextView.attributedText = self.consoleAsciiText
-            }
+            let appendString = "\n"
+            let myFont = UIFont(name: "Helvetica Neue", size: 15.0) ?? UIFont.systemFont(ofSize: 15.0)
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: myFont,
+                .foregroundColor: UIColor.red
+            ]
+            let attribString = NSAttributedString(
+                string: "[Incoming]: " + BLEConnectionState.shared.lastReceivedValue + appendString,
+                attributes: attributes
+            )
+            self.consoleAsciiText.append(attribString)
+            self.baseTextView.attributedText = self.consoleAsciiText
         }
     }
 
