@@ -8,8 +8,10 @@
 
 import UIKit
 import CoreBluetooth
+import os
 
 class UartModuleViewController: UIViewController, UITextViewDelegate, UITextFieldDelegate {
+    private static let logger = Logger(subsystem: "com.mi365locker", category: "UART")
 
     // MARK: - UI
     @IBOutlet weak var baseTextView: UITextView!
@@ -22,9 +24,14 @@ class UartModuleViewController: UIViewController, UITextViewDelegate, UITextFiel
     var peripheral: CBPeripheral!
     private var consoleAsciiText = NSMutableAttributedString()
     private var notificationObserver: (any NSObjectProtocol)?
+    private let keyboardScrollOffset: CGFloat = 250
 
     override func viewDidLoad() {
         super.viewDidLoad()
+
+        guard peripheral != nil else {
+            fatalError("UartModuleViewController requires a peripheral to be set before presentation")
+        }
 
         navigationItem.backBarButtonItem = UIBarButtonItem(title: "Back", style: .plain, target: nil, action: nil)
         baseTextView.delegate = self
@@ -39,12 +46,13 @@ class UartModuleViewController: UIViewController, UITextViewDelegate, UITextFiel
         inputTextField.layer.borderColor = UIColor.blue.cgColor
         inputTextField.layer.cornerRadius = 3.0
 
-        updateIncomingData()
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        baseTextView.text = ""
+        consoleAsciiText = NSMutableAttributedString()
+        baseTextView.attributedText = consoleAsciiText
+        updateIncomingData()
     }
 
     override func viewDidDisappear(_ animated: Bool) {
@@ -56,6 +64,10 @@ class UartModuleViewController: UIViewController, UITextViewDelegate, UITextFiel
     }
 
     func updateIncomingData() {
+        if let existing = notificationObserver {
+            NotificationCenter.default.removeObserver(existing)
+            notificationObserver = nil
+        }
         notificationObserver = NotificationCenter.default.addObserver(
             forName: NSNotification.Name(rawValue: "Notify"),
             object: nil,
@@ -64,14 +76,13 @@ class UartModuleViewController: UIViewController, UITextViewDelegate, UITextFiel
             MainActor.assumeIsolated {
                 guard let self else { return }
 
-                let appendString = "\n"
                 let myFont = UIFont(name: "Helvetica Neue", size: 15.0) ?? UIFont.systemFont(ofSize: 15.0)
                 let attributes: [NSAttributedString.Key: Any] = [
                     .font: myFont,
                     .foregroundColor: UIColor.red
                 ]
                 let attribString = NSAttributedString(
-                    string: "[Incoming]: " + characteristicASCIIValue + appendString,
+                    string: "[Incoming]: " + BLEConnectionState.shared.lastReceivedValue + "\n",
                     attributes: attributes
                 )
                 self.consoleAsciiText.append(attribString)
@@ -85,7 +96,6 @@ class UartModuleViewController: UIViewController, UITextViewDelegate, UITextFiel
     }
 
     func outgoingData() {
-        let appendString = "\n"
         let inputText = inputTextField.text ?? ""
 
         let myFont = UIFont(name: "Helvetica Neue", size: 15.0) ?? UIFont.systemFont(ofSize: 15.0)
@@ -94,11 +104,11 @@ class UartModuleViewController: UIViewController, UITextViewDelegate, UITextFiel
             .foregroundColor: UIColor.blue
         ]
 
-        sendCommand(lock: isLocked)
-        isLocked = !isLocked
+        sendCommand(lock: BLEConnectionState.shared.isLocked)
+        BLEConnectionState.shared.isLocked = !BLEConnectionState.shared.isLocked
 
         let attribString = NSAttributedString(
-            string: "[Outgoing]: " + inputText + appendString,
+            string: "[Outgoing]: " + inputText + "\n",
             attributes: attributes
         )
         consoleAsciiText.append(attribString)
@@ -112,18 +122,18 @@ class UartModuleViewController: UIViewController, UITextViewDelegate, UITextFiel
         let bytes = lock ? Mi365Command.lock : Mi365Command.unlock
         let data = Data(bytes)
 
-        guard let peripheral = blePeripheral,
-              let characteristic = txCharacteristic else {
-            print("BLE not connected — cannot send command")
+        guard let peripheral = BLEConnectionState.shared.peripheral,
+              let characteristic = BLEConnectionState.shared.txCharacteristic else {
+            Self.logger.error("BLE not connected — cannot send command")
             return
         }
         peripheral.writeValue(data, for: characteristic, type: .withoutResponse)
     }
 
     func writeCharacteristic(val: Int8) {
-        guard let peripheral = blePeripheral,
-              let characteristic = txCharacteristic else {
-            print("BLE not connected — cannot write characteristic")
+        guard let peripheral = BLEConnectionState.shared.peripheral,
+              let characteristic = BLEConnectionState.shared.txCharacteristic else {
+            Self.logger.error("BLE not connected — cannot write characteristic")
             return
         }
         var value = val
@@ -142,7 +152,7 @@ class UartModuleViewController: UIViewController, UITextViewDelegate, UITextFiel
     }
 
     func textFieldDidBeginEditing(_ textField: UITextField) {
-        scrollView.setContentOffset(CGPoint(x: 0, y: 250), animated: true)
+        scrollView.setContentOffset(CGPoint(x: 0, y: keyboardScrollOffset), animated: true)
     }
 
     func textFieldDidEndEditing(_ textField: UITextField) {
@@ -153,11 +163,11 @@ class UartModuleViewController: UIViewController, UITextViewDelegate, UITextFiel
 
     @IBAction func switchAction(_ sender: Any) {
         if switchUI.isOn {
-            print("On")
+            Self.logger.info("Switch: Lock ON")
             sendCommand(lock: true)
             writeCharacteristic(val: 1)
         } else {
-            print("Off")
+            Self.logger.info("Switch: Lock OFF")
             sendCommand(lock: false)
             writeCharacteristic(val: 0)
         }

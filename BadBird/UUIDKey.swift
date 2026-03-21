@@ -9,9 +9,11 @@
 import CoreBluetooth
 
 // Nordic UART Service UUIDs
-nonisolated(unsafe) let BLEService_UUID = CBUUID(string: "6e400001-b5a3-f393-e0a9-e50e24dcca9e")
-nonisolated(unsafe) let BLE_Characteristic_uuid_Tx = CBUUID(string: "6e400002-b5a3-f393-e0a9-e50e24dcca9e")  // Write without response
-nonisolated(unsafe) let BLE_Characteristic_uuid_Rx = CBUUID(string: "6e400003-b5a3-f393-e0a9-e50e24dcca9e")  // Read/Notify
+enum BLEUUIDs {
+    nonisolated(unsafe) static let service = CBUUID(string: "6e400001-b5a3-f393-e0a9-e50e24dcca9e")
+    nonisolated(unsafe) static let tx = CBUUID(string: "6e400002-b5a3-f393-e0a9-e50e24dcca9e")
+    nonisolated(unsafe) static let rx = CBUUID(string: "6e400003-b5a3-f393-e0a9-e50e24dcca9e")
+}
 
 // Mi365 scooter commands
 enum Mi365Command {

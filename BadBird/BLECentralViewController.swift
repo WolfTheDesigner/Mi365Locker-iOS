@@ -9,21 +9,29 @@
 import Foundation
 import UIKit
 import CoreBluetooth
+import os
 
-// Shared BLE state accessible from @MainActor context
-@MainActor var txCharacteristic: CBCharacteristic?
-@MainActor var rxCharacteristic: CBCharacteristic?
-@MainActor var blePeripheral: CBPeripheral?
-@MainActor var characteristicASCIIValue = ""
-@MainActor var isLocked = true
+@MainActor
+final class BLEConnectionState {
+    static let shared = BLEConnectionState()
+    init() {}
+
+    var txCharacteristic: CBCharacteristic?
+    var rxCharacteristic: CBCharacteristic?
+    var peripheral: CBPeripheral?
+    var lastReceivedValue = ""
+    var isLocked = true
+}
 
 class BLECentralViewController: UIViewController, @preconcurrency CBCentralManagerDelegate, @preconcurrency CBPeripheralDelegate, UITableViewDelegate, UITableViewDataSource {
+    private static let logger = Logger(subsystem: "com.mi365locker", category: "BLE")
 
     // MARK: - Data
     var centralManager: CBCentralManager!
     var rssiValues: [NSNumber] = []
     var peripherals: [CBPeripheral] = []
     var scanTimer: Timer?
+    private let scanTimeoutInterval: TimeInterval = 17
 
     // MARK: - UI
     @IBOutlet weak var baseTableView: UITableView!
@@ -52,12 +60,12 @@ class BLECentralViewController: UIViewController, @preconcurrency CBCentralManag
         disconnectFromDevice()
         super.viewDidAppear(animated)
         refreshScanView()
-        print("View Cleared")
+        Self.logger.debug("View Cleared")
     }
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        print("Stop Scanning")
+        Self.logger.debug("Stop Scanning")
         centralManager?.stopScan()
         scanTimer?.invalidate()
         scanTimer = nil
@@ -67,18 +75,17 @@ class BLECentralViewController: UIViewController, @preconcurrency CBCentralManag
 
     func startScan() {
         peripherals = []
-        isLocked = !isLocked
-        print(isLocked ? "Now Locking..." : "Now Unlocking...")
+        rssiValues = []
 
         scanTimer?.invalidate()
-        centralManager?.scanForPeripherals(withServices: [BLEService_UUID], options: [CBCentralManagerScanOptionAllowDuplicatesKey: false])
-        scanTimer = Timer.scheduledTimer(timeInterval: 17, target: self, selector: #selector(cancelScan), userInfo: nil, repeats: false)
+        centralManager?.scanForPeripherals(withServices: [BLEUUIDs.service], options: [CBCentralManagerScanOptionAllowDuplicatesKey: false])
+        scanTimer = Timer.scheduledTimer(timeInterval: scanTimeoutInterval, target: self, selector: #selector(cancelScan), userInfo: nil, repeats: false)
     }
 
     @objc func cancelScan() {
         centralManager?.stopScan()
-        print("Scan Stopped")
-        print("Number of Peripherals Found: \(peripherals.count)")
+        Self.logger.debug("Scan Stopped")
+        Self.logger.info("Number of Peripherals Found: \(self.peripherals.count, privacy: .public)")
     }
 
     func refreshScanView() {
@@ -88,7 +95,7 @@ class BLECentralViewController: UIViewController, @preconcurrency CBCentralManag
     // MARK: - Connection Management
 
     func disconnectFromDevice() {
-        guard let peripheral = blePeripheral else { return }
+        guard let peripheral = BLEConnectionState.shared.peripheral else { return }
         centralManager?.cancelPeripheralConnection(peripheral)
     }
 
@@ -97,8 +104,8 @@ class BLECentralViewController: UIViewController, @preconcurrency CBCentralManag
     }
 
     func connectToDevice() {
-        guard let peripheral = blePeripheral else {
-            print("No peripheral to connect to")
+        guard let peripheral = BLEConnectionState.shared.peripheral else {
+            Self.logger.error("No peripheral to connect to")
             return
         }
         centralManager?.connect(peripheral, options: nil)
@@ -116,19 +123,18 @@ class BLECentralViewController: UIViewController, @preconcurrency CBCentralManag
     }
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
-        print("*****************************")
-        print("Connection complete")
-        print("Peripheral info: \(String(describing: peripheral))")
+        Self.logger.info("Connection complete")
+        Self.logger.debug("Peripheral info: \(String(describing: peripheral), privacy: .public)")
 
         centralManager?.stopScan()
-        print("Scan Stopped")
+        Self.logger.debug("Scan Stopped")
 
         peripheral.delegate = self
-        peripheral.discoverServices([BLEService_UUID])
+        peripheral.discoverServices([BLEUUIDs.service])
 
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
         guard let uartViewController = storyboard.instantiateViewController(withIdentifier: "UartModuleViewController") as? UartModuleViewController else {
-            print("Failed to instantiate UartModuleViewController")
+            Self.logger.error("Failed to instantiate UartModuleViewController")
             return
         }
         uartViewController.peripheral = peripheral
@@ -137,104 +143,111 @@ class BLECentralViewController: UIViewController, @preconcurrency CBCentralManag
 
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: (any Error)?) {
         if let error {
-            print("Failed to connect to peripheral: \(error.localizedDescription)")
+            Self.logger.error("Failed to connect to peripheral: \(error.localizedDescription, privacy: .public)")
         }
     }
 
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: (any Error)?) {
-        print("Disconnected")
+        Self.logger.info("Disconnected")
+        BLEConnectionState.shared.peripheral = nil
+        BLEConnectionState.shared.txCharacteristic = nil
+        BLEConnectionState.shared.rxCharacteristic = nil
     }
 
     // MARK: - CBPeripheralDelegate
 
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: (any Error)?) {
         if let error {
-            print("Error discovering services: \(error.localizedDescription)")
+            Self.logger.error("Error discovering services: \(error.localizedDescription, privacy: .public)")
             return
         }
 
         guard let services = peripheral.services else { return }
 
         for service in services {
-            peripheral.discoverCharacteristics([BLE_Characteristic_uuid_Tx, BLE_Characteristic_uuid_Rx], for: service)
+            peripheral.discoverCharacteristics([BLEUUIDs.tx, BLEUUIDs.rx], for: service)
         }
-        print("Discovered Services: \(services)")
+        Self.logger.debug("Discovered Services: \(String(describing: services), privacy: .public)")
     }
 
     func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: (any Error)?) {
         if let error {
-            print("Error discovering characteristics: \(error.localizedDescription)")
+            Self.logger.error("Error discovering characteristics: \(error.localizedDescription, privacy: .public)")
             return
         }
 
         guard let characteristics = service.characteristics else { return }
 
-        print("Found \(characteristics.count) characteristics!")
+        Self.logger.info("Found \(characteristics.count, privacy: .public) characteristics!")
 
         for characteristic in characteristics {
-            if characteristic.uuid.isEqual(BLE_Characteristic_uuid_Rx) {
-                rxCharacteristic = characteristic
+            if characteristic.uuid.isEqual(BLEUUIDs.rx) {
+                BLEConnectionState.shared.rxCharacteristic = characteristic
                 peripheral.setNotifyValue(true, for: characteristic)
                 peripheral.readValue(for: characteristic)
-                print("Rx Characteristic: \(characteristic.uuid)")
+                Self.logger.debug("Rx Characteristic: \(characteristic.uuid.uuidString, privacy: .public)")
             }
-            if characteristic.uuid.isEqual(BLE_Characteristic_uuid_Tx) {
-                txCharacteristic = characteristic
-                print("Tx Characteristic: \(characteristic.uuid)")
+            if characteristic.uuid.isEqual(BLEUUIDs.tx) {
+                BLEConnectionState.shared.txCharacteristic = characteristic
+                Self.logger.debug("Tx Characteristic: \(characteristic.uuid.uuidString, privacy: .public)")
             }
             peripheral.discoverDescriptors(for: characteristic)
         }
     }
 
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: (any Error)?) {
-        if characteristic == rxCharacteristic {
+        if let error {
+            Self.logger.error("Error reading characteristic: \(error.localizedDescription, privacy: .public)")
+            return
+        }
+        if characteristic == BLEConnectionState.shared.rxCharacteristic {
             guard let value = characteristic.value,
                   let asciiString = String(data: value, encoding: .utf8) else { return }
-            characteristicASCIIValue = asciiString
-            print("Value Received: \(asciiString)")
+            BLEConnectionState.shared.lastReceivedValue = asciiString
+            Self.logger.debug("Value Received: \(asciiString, privacy: .public)")
             NotificationCenter.default.post(name: NSNotification.Name(rawValue: "Notify"), object: nil)
         }
     }
 
     func peripheral(_ peripheral: CBPeripheral, didDiscoverDescriptorsFor characteristic: CBCharacteristic, error: (any Error)?) {
         if let error {
-            print("\(error.localizedDescription)")
+            Self.logger.error("\(error.localizedDescription, privacy: .public)")
             return
         }
         guard let descriptors = characteristic.descriptors else { return }
         for descriptor in descriptors {
-            print("Descriptor: \(String(describing: descriptor.description))")
-            print("Rx Value \(String(describing: rxCharacteristic?.value))")
-            print("Tx Value \(String(describing: txCharacteristic?.value))")
+            Self.logger.debug("Descriptor: \(String(describing: descriptor.description), privacy: .public)")
+            Self.logger.debug("Rx Value \(String(describing: BLEConnectionState.shared.rxCharacteristic?.value), privacy: .public)")
+            Self.logger.debug("Tx Value \(String(describing: BLEConnectionState.shared.txCharacteristic?.value), privacy: .public)")
         }
     }
 
     func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: (any Error)?) {
         if let error {
-            print("Error changing notification state: \(error.localizedDescription)")
+            Self.logger.error("Error changing notification state: \(error.localizedDescription, privacy: .public)")
         } else {
-            print("Characteristic's value subscribed")
+            Self.logger.debug("Characteristic's value subscribed")
         }
 
         if characteristic.isNotifying {
-            print("Subscribed. Notification has begun for: \(characteristic.uuid)")
+            Self.logger.debug("Subscribed. Notification has begun for: \(characteristic.uuid.uuidString, privacy: .public)")
         }
     }
 
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: (any Error)?) {
         guard error == nil else {
-            print("Error writing value: \(error!.localizedDescription)")
+            Self.logger.error("Error writing value: \(error!.localizedDescription, privacy: .public)")
             return
         }
-        print("Message sent")
+        Self.logger.debug("Message sent")
     }
 
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor descriptor: CBDescriptor, error: (any Error)?) {
         guard error == nil else {
-            print("Error writing descriptor: \(error!.localizedDescription)")
+            Self.logger.error("Error writing descriptor: \(error!.localizedDescription, privacy: .public)")
             return
         }
-        print("Succeeded!")
+        Self.logger.debug("Succeeded!")
     }
 
     // MARK: - UITableViewDataSource
@@ -257,7 +270,7 @@ class BLECentralViewController: UIViewController, @preconcurrency CBCentralManag
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        blePeripheral = peripherals[indexPath.row]
+        BLEConnectionState.shared.peripheral = peripherals[indexPath.row]
         connectToDevice()
     }
 
@@ -265,10 +278,10 @@ class BLECentralViewController: UIViewController, @preconcurrency CBCentralManag
 
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         if central.state == .poweredOn {
-            print("Bluetooth Enabled")
+            Self.logger.info("Bluetooth Enabled")
             startScan()
         } else {
-            print("Bluetooth Disabled- Make sure your Bluetooth is turned on")
+            Self.logger.warning("Bluetooth Disabled- Make sure your Bluetooth is turned on")
 
             let alertVC = UIAlertController(title: "Bluetooth is not enabled", message: "Make sure that your bluetooth is turned on", preferredStyle: .alert)
             let action = UIAlertAction(title: "OK", style: .default) { _ in
