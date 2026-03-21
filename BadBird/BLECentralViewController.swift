@@ -14,7 +14,7 @@ import os
 @MainActor
 final class BLEConnectionState {
     static let shared = BLEConnectionState()
-    private init() {}
+    init() {}
 
     var txCharacteristic: CBCharacteristic?
     var rxCharacteristic: CBCharacteristic?
@@ -149,6 +149,9 @@ class BLECentralViewController: UIViewController, @preconcurrency CBCentralManag
 
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: (any Error)?) {
         Self.logger.info("Disconnected")
+        BLEConnectionState.shared.peripheral = nil
+        BLEConnectionState.shared.txCharacteristic = nil
+        BLEConnectionState.shared.rxCharacteristic = nil
     }
 
     // MARK: - CBPeripheralDelegate
@@ -193,6 +196,10 @@ class BLECentralViewController: UIViewController, @preconcurrency CBCentralManag
     }
 
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: (any Error)?) {
+        if let error {
+            Self.logger.error("Error reading characteristic: \(error.localizedDescription, privacy: .public)")
+            return
+        }
         if characteristic == BLEConnectionState.shared.rxCharacteristic {
             guard let value = characteristic.value,
                   let asciiString = String(data: value, encoding: .utf8) else { return }

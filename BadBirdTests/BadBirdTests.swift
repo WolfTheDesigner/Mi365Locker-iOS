@@ -56,13 +56,10 @@ struct BLEConnectionStateTests {
         #expect(a === b)
     }
 
-    @Test("Default state is locked")
+    @Test("Initial isLocked is true")
     @MainActor
     func defaultLocked() {
-        // Note: This tests the class definition, not runtime state
-        let state = BLEConnectionState.shared
-        // Reset for test
-        state.isLocked = true
-        #expect(state.isLocked == true)
+        let freshState = BLEConnectionState()
+        #expect(freshState.isLocked == true)
     }
 }
