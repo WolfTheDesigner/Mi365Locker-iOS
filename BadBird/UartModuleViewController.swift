@@ -50,7 +50,8 @@ class UartModuleViewController: UIViewController, UITextViewDelegate, UITextFiel
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        baseTextView.text = ""
+        consoleAsciiText = NSMutableAttributedString()
+        baseTextView.attributedText = consoleAsciiText
         updateIncomingData()
     }
 
@@ -90,8 +91,8 @@ class UartModuleViewController: UIViewController, UITextViewDelegate, UITextFiel
     }
 
     func outgoingData() {
-        let appendString = "\n"
         let inputText = inputTextField.text ?? ""
+        guard !inputText.isEmpty else { return }
 
         let myFont = UIFont(name: "Helvetica Neue", size: 15.0) ?? UIFont.systemFont(ofSize: 15.0)
         let attributes: [NSAttributedString.Key: Any] = [
@@ -99,11 +100,8 @@ class UartModuleViewController: UIViewController, UITextViewDelegate, UITextFiel
             .foregroundColor: UIColor.blue
         ]
 
-        sendCommand(lock: BLEConnectionState.shared.isLocked)
-        BLEConnectionState.shared.isLocked = !BLEConnectionState.shared.isLocked
-
         let attribString = NSAttributedString(
-            string: "[Outgoing]: " + inputText + appendString,
+            string: "[Outgoing]: " + inputText + "\n",
             attributes: attributes
         )
         consoleAsciiText.append(attribString)
@@ -157,7 +155,10 @@ class UartModuleViewController: UIViewController, UITextViewDelegate, UITextFiel
     // MARK: - Switch Action
 
     @IBAction func switchAction(_ sender: Any) {
-        if switchUI.isOn {
+        let locking = switchUI.isOn
+        BLEConnectionState.shared.isLocked = locking
+
+        if locking {
             Self.logger.info("Switch: Lock ON")
             sendCommand(lock: true)
             writeCharacteristic(val: 1)
